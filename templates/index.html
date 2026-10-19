@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>ProjectFlow | Project Manager</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+</head>
+
+<body>
+
+<nav>
+
+    <div class="logo">
+        ProjectFlow
+    </div>
+
+    <div class="manager">
+        Project Manager
+    </div>
+
+</nav>
+
+
+<div class="container">
+
+    <!-- WELCOME SECTION -->
+
+    <section class="welcome">
+
+        <div>
+
+            <p class="label">
+                PROJECT MANAGEMENT DASHBOARD
+            </p>
+
+            <h1>
+                Welcome back, Project Manager
+            </h1>
+
+            <p>
+                Manage, monitor and track your projects from one place.
+            </p>
+
+        </div>
+
+
+        <button
+            onclick="openProjectForm()"
+            class="new-project-button"
+        >
+            + New Project
+        </button>
+
+    </section>
+
+
+    <!-- ADD PROJECT FORM -->
+
+    <section
+        id="projectForm"
+        class="form-container"
+        style="display: none;"
+    >
+
+        <div class="form-header">
+
+            <div>
+                <h2>Add New Project</h2>
+
+                <p>
+                    Enter the information for the new project.
+                </p>
+            </div>
+
+            <button
+                type="button"
+                class="close-button"
+                onclick="closeProjectForm()"
+            >
+                ×
+            </button>
+
+        </div>
+
+
+        <form
+            action="/add-project"
+            method="POST"
+        >
+
+            <div class="form-group">
+
+                <label>
+                    Project Name
+                </label>
+
+                <input
+                    type="text"
+                    name="name"
+                    placeholder="Enter project name"
+                    required
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    Description
+                </label>
+
+                <textarea
+                    name="description"
+                    placeholder="Enter project description"
+                    required
+                ></textarea>
+
+            </div>
+
+
+            <div class="form-row">
+
+                <div class="form-group">
+
+                    <label>
+                        Status
+                    </label>
+
+                    <select name="status">
+
+                        <option value="In Progress">
+                            In Progress
+                        </option>
+
+                        <option value="Pending">
+                            Pending
+                        </option>
+
+                        <option value="Completed">
+                            Completed
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label>
+                        Progress (%)
+                    </label>
+
+                    <input
+                        type="number"
+                        name="progress"
+                        min="0"
+                        max="100"
+                        value="0"
+                        required
+                    >
+
+                </div>
+
+            </div>
+
+
+            <div class="form-actions">
+
+                <button
+                    type="button"
+                    class="cancel-button"
+                    onclick="closeProjectForm()"
+                >
+                    Cancel
+                </button>
+
+                <button
+                    type="submit"
+                    class="submit-button"
+                >
+                    Add Project
+                </button>
+
+            </div>
+
+        </form>
+
+    </section>
+
+
+    <!-- STATISTICS -->
+
+    <section class="stats">
+
+        <div class="stat-card">
+
+            <p>Total Projects</p>
+
+            <h2>
+                {{ total_projects }}
+            </h2>
+
+        </div>
+
+
+        <div class="stat-card">
+
+            <p>In Progress</p>
+
+            <h2>
+                {{ in_progress }}
+            </h2>
+
+        </div>
+
+
+        <div class="stat-card">
+
+            <p>Completed</p>
+
+            <h2>
+                {{ completed }}
+            </h2>
+
+        </div>
+
+
+        <div class="stat-card">
+
+            <p>Pending</p>
+
+            <h2>
+                {{ pending }}
+            </h2>
+
+        </div>
+
+    </section>
+
+
+    <!-- PROJECTS -->
+
+    <section class="projects">
+
+        <div class="section-heading">
+
+            <div>
+
+                <h2>
+                    Recent Projects
+                </h2>
+
+                <p>
+                    Overview of current project activity
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <div class="project-grid">
+
+            {% if projects %}
+
+                {% for project in projects %}
+
+                <div class="project-card">
+
+                    <div class="project-top">
+
+                        <div class="icon">
+                            {{ project.name[0] }}
+                        </div>
+
+
+                        {% if project.status == "Completed" %}
+
+                        <span class="status completed">
+
+                            {{ project.status }}
+
+                        </span>
+
+                        {% elif project.status == "Pending" %}
+
+                        <span class="status pending">
+
+                            {{ project.status }}
+
+                        </span>
+
+                        {% else %}
+
+                        <span class="status">
+
+                            {{ project.status }}
+
+                        </span>
+
+                        {% endif %}
+
+                    </div>
+
+
+                    <h3>
+                        {{ project.name }}
+                    </h3>
+
+
+                    <p class="description">
+                        {{ project.description }}
+                    </p>
+
+
+                    <div class="progress-info">
+
+                        <span>
+                            Progress
+                        </span>
+
+                        <strong>
+                            {{ project.progress }}%
+                        </strong>
+
+                    </div>
+
+
+                    <div class="progress-bar">
+
+                        <div
+                            class="progress"
+                            style="width: {{ project.progress }}%;"
+                        >
+                        </div>
+
+                    </div>
+
+                </div>
+
+                {% endfor %}
+
+            {% else %}
+
+                <div class="empty-state">
+
+                    <h3>
+                        No projects found
+                    </h3>
+
+                    <p>
+                        Click New Project to create your first project.
+                    </p>
+
+                </div>
+
+            {% endif %}
+
+        </div>
+
+    </section>
+
+</div>
+
+
+<footer>
+
+    © 2026 ProjectFlow — Project Management System
+
+</footer>
+
+
+<script>
+
+function openProjectForm() {
+
+    document.getElementById(
+        "projectForm"
+    ).style.display = "block";
+
+    document.getElementById(
+        "projectForm"
+    ).scrollIntoView({
+        behavior: "smooth"
+    });
+
+}
+
+
+function closeProjectForm() {
+
+    document.getElementById(
+        "projectForm"
+    ).style.display = "none";
+
+}
+
+</script>
+
+
+</body>
+
+</html>
