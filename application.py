@@ -5,15 +5,76 @@ import os
 application = Flask(__name__)
 
 
+# --------------------------------------------------
+# Read Docker Secret
+# --------------------------------------------------
+
+def read_secret(secret_name):
+    secret_path = f"/run/secrets/{secret_name}"
+
+    try:
+        with open(secret_path, "r") as file:
+            return file.read().strip()
+
+    except FileNotFoundError:
+        return os.getenv(secret_name)
+
+
+# --------------------------------------------------
+# Database Connection
+# --------------------------------------------------
+
 def get_connection():
     return pymysql.connect(
-        host=os.environ.get("DB_HOST", "localhost"),
-        user=os.environ.get("DB_USER", "root"),
-        password=os.environ.get("DB_PASSWORD", ""),
-        database=os.environ.get("DB_NAME", "project_manager"),
-        cursorclass=pymysql.cursors.DictCursor
+        host=os.environ.get("DB_HOST", "db"),
+        user=os.environ.get("DB_USER", "projectuser"),
+        password=read_secret("db_password"),
+        database=os.environ.get(
+            "DB_NAME",
+            "project_manager"
+        ),
+        cursorclass=pymysql.cursors.DictCursor,
+        ssl={"check_hostname": False},
+        autocommit=False
     )
 
+
+def ensure_projects_table(connection):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS projects (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                description TEXT NOT NULL,
+                status VARCHAR(32) NOT NULL,
+                progress TINYINT UNSIGNED NOT NULL
+            )
+            """
+        )
+
+
+# --------------------------------------------------
+# Prevent Browser Caching
+# --------------------------------------------------
+
+@application.after_request
+def add_no_cache_headers(response):
+
+    response.headers["Cache-Control"] = (
+        "no-store, no-cache, must-revalidate, "
+        "max-age=0"
+    )
+
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+
+    return response
+
+
+# --------------------------------------------------
+# Home Page
+# --------------------------------------------------
 
 @application.route("/")
 def home():
@@ -25,9 +86,12 @@ def home():
     completed = 0
     pending = 0
 
+    connection = None
+
     try:
 
         connection = get_connection()
+        ensure_projects_table(connection)
 
         with connection.cursor() as cursor:
 
@@ -37,28 +101,28 @@ def home():
 
             projects = cursor.fetchall()
 
-        connection.close()
 
-
-        # Calculate statistics
+        # ------------------------------------------
+        # Calculate Project Statistics
+        # ------------------------------------------
 
         total_projects = len(projects)
 
-
         in_progress = sum(
-            1 for project in projects
+            1
+            for project in projects
             if project["status"] == "In Progress"
         )
 
-
         completed = sum(
-            1 for project in projects
+            1
+            for project in projects
             if project["status"] == "Completed"
         )
 
-
         pending = sum(
-            1 for project in projects
+            1
+            for project in projects
             if project["status"] == "Pending"
         )
 
@@ -71,6 +135,12 @@ def home():
         )
 
 
+    finally:
+
+        if connection:
+            connection.close()
+
+
     return render_template(
         "index.html",
         projects=projects,
@@ -80,6 +150,10 @@ def home():
         pending=pending
     )
 
+
+# --------------------------------------------------
+# Add Project
+# --------------------------------------------------
 
 @application.route(
     "/add-project",
@@ -92,9 +166,12 @@ def add_project():
     status = request.form.get("status")
     progress = request.form.get("progress")
 
+    connection = None
+
     try:
 
         connection = get_connection()
+        ensure_projects_table(connection)
 
         with connection.cursor() as cursor:
 
@@ -125,12 +202,20 @@ def add_project():
                 )
             )
 
+
+        # Save project permanently to MySQL
         connection.commit()
 
-        connection.close()
+        print(
+            "Project added successfully:",
+            name
+        )
 
 
     except Exception as error:
+
+        if connection:
+            connection.rollback()
 
         print(
             "Database error:",
@@ -138,10 +223,21 @@ def add_project():
         )
 
 
+    finally:
+
+        if connection:
+            connection.close()
+
+
+    # Reload home page with latest database data
     return redirect(
         url_for("home")
     )
 
+
+# --------------------------------------------------
+# Run Application
+# --------------------------------------------------
 
 if __name__ == "__main__":
 

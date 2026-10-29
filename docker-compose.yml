@@ -1,0 +1,57 @@
+services:
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: project-web
+
+    ports:
+      - "80:5000"
+
+    environment:
+      DB_HOST: db
+      DB_USER: projectuser
+      DB_NAME: project_manager
+
+    secrets:
+      - db_password
+
+    depends_on:
+      - db
+
+    restart: always
+
+
+  db:
+    image: mysql:8.4
+
+    container_name: project-db
+
+    environment:
+      MYSQL_DATABASE: project_manager
+      MYSQL_USER: projectuser
+      MYSQL_PASSWORD_FILE: /run/secrets/db_password
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
+
+    secrets:
+      - db_password
+      - db_root_password
+
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+    restart: always
+
+
+volumes:
+  mysql_data:
+
+
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+
+  db_root_password:
+    file: ./secrets/db_root_password.txt
